@@ -244,7 +244,7 @@
 
   .place-box {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     gap: 8px;
     background: var(--surface-2);
     border: 1px solid var(--border);
@@ -253,8 +253,15 @@
     font-size: 13px;
     color: var(--text);
   }
-  .place-box .place-icon { font-size: 13px; line-height: 1; }
+  .place-box .place-icon { font-size: 13px; line-height: 1.4; }
+  .place-box .place-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
   .place-box .place-name { font-weight: 500; }
+  .place-box .place-coords {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    font-size: 11.5px;
+    color: var(--muted);
+  }
   .place-box.is-pending .place-name { font-weight: 400; color: var(--muted); font-style: italic; }
   .place-box.is-error .place-name { font-weight: 400; color: var(--danger); }
 
@@ -614,7 +621,10 @@
           <div class="locate-status" id="locate-status">Fills temperature, humidity, altitude &amp; pressure from live conditions where you're standing.</div>
           <div class="place-box" id="place-box">
             <span class="place-icon" aria-hidden="true">&#128205;</span>
-            <span class="place-name" id="place-name">No location resolved yet</span>
+            <span class="place-text">
+              <span class="place-name" id="place-name">No location resolved yet</span>
+              <span class="place-coords" id="place-coords" hidden></span>
+            </span>
           </div>
         </div>
         <div class="field">
@@ -788,6 +798,7 @@
     locateStatus: document.getElementById("locate-status"),
     placeBox: document.getElementById("place-box"),
     placeName: document.getElementById("place-name"),
+    placeCoords: document.getElementById("place-coords"),
     savePresetBtn: document.getElementById("save-preset"),
     presetList: document.getElementById("preset-list"),
     delayLabel: document.getElementById("delay-label"),
@@ -979,6 +990,16 @@
     el.placeBox.classList.toggle("is-error", state === "error");
   }
 
+  function setCoords(lat, lon) {
+    el.placeCoords.textContent = lat.toFixed(4) + "°, " + lon.toFixed(4) + "°";
+    el.placeCoords.hidden = false;
+  }
+
+  function clearCoords() {
+    el.placeCoords.hidden = true;
+    el.placeCoords.textContent = "";
+  }
+
   function fetchPlaceName(lat, lon) {
     setPlaceState("Resolving place name…", "pending");
     var url = "https://nominatim.openstreetmap.org/reverse"
@@ -1025,9 +1046,11 @@
     }
     el.locateBtn.disabled = true;
     setPlaceState("Resolving place name…", "pending");
+    clearCoords();
     setLocateStatus("Locating…", false);
     navigator.geolocation.getCurrentPosition(
       function (pos) {
+        setCoords(pos.coords.latitude, pos.coords.longitude);
         fetchWeather(pos.coords.latitude, pos.coords.longitude);
         fetchPlaceName(pos.coords.latitude, pos.coords.longitude);
       },
@@ -1036,6 +1059,7 @@
         if (err && err.code === 1) msg = "Location permission denied — enter conditions manually.";
         setLocateStatus(msg, true);
         setPlaceState("No location resolved yet", null);
+        clearCoords();
         el.locateBtn.disabled = false;
       },
       { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 }
