@@ -240,6 +240,21 @@
   }
   .locate-status.is-error { color: var(--danger); }
 
+  .place-box {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    padding: 8px 10px;
+    font-size: 13px;
+    color: var(--text);
+  }
+  .place-box[hidden] { display: none; }
+  .place-box .place-icon { font-size: 13px; line-height: 1; }
+  .place-box .place-name { font-weight: 500; }
+
   .pressure-note {
     font-size: 12px;
     color: var(--muted);
@@ -490,6 +505,10 @@
             <span aria-hidden="true">&#128205;</span> Use my location
           </button>
           <div class="locate-status" id="locate-status">Fills temperature, humidity, altitude &amp; pressure from live conditions where you're standing.</div>
+          <div class="place-box" id="place-box" hidden>
+            <span class="place-icon" aria-hidden="true">&#128205;</span>
+            <span class="place-name" id="place-name">&mdash;</span>
+          </div>
         </div>
         <div class="field">
           <label for="distance">Throw distance <span class="hint">speaker to listener</span></label>
@@ -645,6 +664,8 @@
     btnMetric: document.getElementById("btn-metric"),
     locateBtn: document.getElementById("locate-btn"),
     locateStatus: document.getElementById("locate-status"),
+    placeBox: document.getElementById("place-box"),
+    placeName: document.getElementById("place-name"),
     savePresetBtn: document.getElementById("save-preset"),
     presetList: document.getElementById("preset-list")
   };
@@ -823,6 +844,24 @@
     compute();
   }
 
+  function fetchPlaceName(lat, lon) {
+    var url = "https://api.bigdatacloud.net/data/reverse-geocode-client"
+      + "?latitude=" + lat.toFixed(4) + "&longitude=" + lon.toFixed(4) + "&localityLanguage=en";
+    fetch(url)
+      .then(function (r) { if (!r.ok) throw new Error("bad response"); return r.json(); })
+      .then(function (d) {
+        var parts = [];
+        var city = d.city || d.locality;
+        if (city) parts.push(city);
+        if (d.principalSubdivision) parts.push(d.principalSubdivision);
+        if (d.countryName && d.countryCode !== "US") parts.push(d.countryName);
+        if (!parts.length) { el.placeBox.hidden = true; return; }
+        el.placeName.textContent = parts.join(", ");
+        el.placeBox.hidden = false;
+      })
+      .catch(function () { el.placeBox.hidden = true; });
+  }
+
   function fetchWeather(lat, lon) {
     var tempUnitParam = el.tempUnit.value === "F" ? "fahrenheit" : "celsius";
     var url = "https://api.open-meteo.com/v1/forecast"
@@ -845,9 +884,13 @@
       return;
     }
     el.locateBtn.disabled = true;
+    el.placeBox.hidden = true;
     setLocateStatus("Locating…", false);
     navigator.geolocation.getCurrentPosition(
-      function (pos) { fetchWeather(pos.coords.latitude, pos.coords.longitude); },
+      function (pos) {
+        fetchWeather(pos.coords.latitude, pos.coords.longitude);
+        fetchPlaceName(pos.coords.latitude, pos.coords.longitude);
+      },
       function (err) {
         var msg = "Location unavailable — enter conditions manually.";
         if (err && err.code === 1) msg = "Location permission denied — enter conditions manually.";
