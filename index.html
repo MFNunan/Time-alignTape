@@ -251,9 +251,10 @@
     font-size: 13px;
     color: var(--text);
   }
-  .place-box[hidden] { display: none; }
   .place-box .place-icon { font-size: 13px; line-height: 1; }
   .place-box .place-name { font-weight: 500; }
+  .place-box.is-pending .place-name { font-weight: 400; color: var(--muted); font-style: italic; }
+  .place-box.is-error .place-name { font-weight: 400; color: var(--danger); }
 
   .pressure-note {
     font-size: 12px;
@@ -505,9 +506,9 @@
             <span aria-hidden="true">&#128205;</span> Use my location
           </button>
           <div class="locate-status" id="locate-status">Fills temperature, humidity, altitude &amp; pressure from live conditions where you're standing.</div>
-          <div class="place-box" id="place-box" hidden>
+          <div class="place-box" id="place-box">
             <span class="place-icon" aria-hidden="true">&#128205;</span>
-            <span class="place-name" id="place-name">&mdash;</span>
+            <span class="place-name" id="place-name">No location resolved yet</span>
           </div>
         </div>
         <div class="field">
@@ -844,7 +845,14 @@
     compute();
   }
 
+  function setPlaceState(text, state) {
+    el.placeName.textContent = text;
+    el.placeBox.classList.toggle("is-pending", state === "pending");
+    el.placeBox.classList.toggle("is-error", state === "error");
+  }
+
   function fetchPlaceName(lat, lon) {
+    setPlaceState("Resolving place name…", "pending");
     var url = "https://api.bigdatacloud.net/data/reverse-geocode-client"
       + "?latitude=" + lat.toFixed(4) + "&longitude=" + lon.toFixed(4) + "&localityLanguage=en";
     fetch(url)
@@ -855,11 +863,10 @@
         if (city) parts.push(city);
         if (d.principalSubdivision) parts.push(d.principalSubdivision);
         if (d.countryName && d.countryCode !== "US") parts.push(d.countryName);
-        if (!parts.length) { el.placeBox.hidden = true; return; }
-        el.placeName.textContent = parts.join(", ");
-        el.placeBox.hidden = false;
+        if (!parts.length) { setPlaceState("No place name for this location", "error"); return; }
+        setPlaceState(parts.join(", "), "resolved");
       })
-      .catch(function () { el.placeBox.hidden = true; });
+      .catch(function () { setPlaceState("Couldn’t resolve a place name", "error"); });
   }
 
   function fetchWeather(lat, lon) {
@@ -884,7 +891,7 @@
       return;
     }
     el.locateBtn.disabled = true;
-    el.placeBox.hidden = true;
+    setPlaceState("Resolving place name…", "pending");
     setLocateStatus("Locating…", false);
     navigator.geolocation.getCurrentPosition(
       function (pos) {
@@ -895,6 +902,7 @@
         var msg = "Location unavailable — enter conditions manually.";
         if (err && err.code === 1) msg = "Location permission denied — enter conditions manually.";
         setLocateStatus(msg, true);
+        setPlaceState("No location resolved yet", null);
         el.locateBtn.disabled = false;
       },
       { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 }
