@@ -27,6 +27,20 @@ Arrival time is throw distance ÷ corrected speed of sound.
 Sources: D. Bohn, "Environmental Effects on the Speed of Sound," *J. Audio
 Eng. Soc*, 1988 · ICAO Standard Atmosphere, 1993.
 
+## Live conditions ("Use my location")
+
+The app can auto-fill temperature, humidity, altitude, and pressure from
+your actual location: browser geolocation gets a lat/lon, then a request
+to [Open-Meteo](https://open-meteo.com) (free, no API key) pulls current
+conditions for that point. Every field it fills stays manually editable
+afterward.
+
+This requires a real network fetch, so it only works when the page is
+served normally (GitHub Pages, any static host, or `localhost`) — it will
+not work inside a sandboxed preview (e.g. an embedded iframe) that blocks
+outbound requests. The button fails gracefully with an inline message in
+that case, and the app is otherwise fully usable by hand.
+
 ## Running locally
 
 This is a static site — no build step.

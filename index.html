@@ -209,6 +209,37 @@
     text-align: right;
   }
 
+  .locate-row {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding-bottom: 4px;
+    border-bottom: 1px solid var(--border);
+  }
+  button.locate-btn {
+    font-family: var(--font-body);
+    font-size: 13px;
+    font-weight: 600;
+    background: transparent;
+    color: var(--accent2);
+    border: 1px solid var(--accent2);
+    border-radius: 8px;
+    padding: 9px 14px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+  }
+  button.locate-btn:hover { background: color-mix(in srgb, var(--accent2) 12%, transparent); }
+  button.locate-btn:disabled { opacity: 0.55; cursor: default; }
+  .locate-status {
+    font-size: 12px;
+    color: var(--muted);
+    min-height: 15px;
+  }
+  .locate-status.is-error { color: var(--danger); }
+
   .pressure-note {
     font-size: 12px;
     color: var(--muted);
@@ -454,6 +485,12 @@
     <section class="panel">
       <h2>Throw &amp; Conditions</h2>
       <div class="strip">
+        <div class="locate-row">
+          <button type="button" class="locate-btn" id="locate-btn">
+            <span aria-hidden="true">&#128205;</span> Use my location
+          </button>
+          <div class="locate-status" id="locate-status">Fills temperature, humidity, altitude &amp; pressure from live conditions where you're standing.</div>
+        </div>
         <div class="field">
           <label for="distance">Throw distance <span class="hint">speaker to listener</span></label>
           <div class="field-row">
@@ -606,6 +643,8 @@
     tracePoly: document.getElementById("trace-poly"),
     btnImperial: document.getElementById("btn-imperial"),
     btnMetric: document.getElementById("btn-metric"),
+    locateBtn: document.getElementById("locate-btn"),
+    locateStatus: document.getElementById("locate-status"),
     savePresetBtn: document.getElementById("save-preset"),
     presetList: document.getElementById("preset-list")
   };
@@ -741,6 +780,82 @@
    el.pressureVal, el.pressureUnit].forEach(function (node) {
     node.addEventListener("input", compute);
     node.addEventListener("change", compute);
+  });
+
+  // ---- Live conditions via geolocation + Open-Meteo ----
+  // Note: fetch() to an external API is blocked when this page runs inside
+  // the sandboxed Claude Artifact preview iframe — it works once deployed
+  // (GitHub Pages, Netlify, etc.) as a normal top-level page.
+  function setLocateStatus(text, isError) {
+    el.locateStatus.textContent = text;
+    el.locateStatus.classList.toggle("is-error", !!isError);
+  }
+
+  function applyWeather(data, lat, lon) {
+    if (!data || !data.current) {
+      setLocateStatus("Weather service returned no data — enter conditions manually.", true);
+      return;
+    }
+    var c = data.current;
+    if (typeof c.temperature_2m === "number") {
+      el.temp.value = fmt(c.temperature_2m, 1);
+    }
+    if (typeof c.relative_humidity_2m === "number") {
+      var rh = Math.round(c.relative_humidity_2m);
+      el.humidity.value = rh;
+      el.humidityVal.textContent = rh + "%";
+    }
+    if (typeof data.elevation === "number") {
+      var altOut = el.altitudeUnit.value === "ft" ? data.elevation / 0.3048 : data.elevation;
+      el.altitude.value = fmt(altOut, 0);
+    }
+    if (typeof c.surface_pressure === "number") {
+      el.pressureOverrideCheck.checked = true;
+      el.pressureOverrideBlock.classList.add("show");
+      el.pressureVal.value = el.pressureUnit.value === "inHg"
+        ? fmt(c.surface_pressure / 33.8639, 2)
+        : fmt(c.surface_pressure, 1);
+    }
+    var now = new Date();
+    var hh = String(now.getHours()).padStart(2, "0");
+    var mm = String(now.getMinutes()).padStart(2, "0");
+    setLocateStatus("Synced from " + lat.toFixed(2) + ", " + lon.toFixed(2) + " · " + hh + ":" + mm + " · live conditions, editable below.", false);
+    compute();
+  }
+
+  function fetchWeather(lat, lon) {
+    var tempUnitParam = el.tempUnit.value === "F" ? "fahrenheit" : "celsius";
+    var url = "https://api.open-meteo.com/v1/forecast"
+      + "?latitude=" + lat.toFixed(4) + "&longitude=" + lon.toFixed(4)
+      + "&current=temperature_2m,relative_humidity_2m,surface_pressure"
+      + "&temperature_unit=" + tempUnitParam + "&timezone=auto";
+    setLocateStatus("Fetching current conditions…", false);
+    fetch(url)
+      .then(function (r) { if (!r.ok) throw new Error("bad response"); return r.json(); })
+      .then(function (data) { applyWeather(data, lat, lon); })
+      .catch(function () {
+        setLocateStatus("Couldn’t reach the weather service (offline, or blocked in this preview) — enter conditions manually.", true);
+      })
+      .finally(function () { el.locateBtn.disabled = false; });
+  }
+
+  el.locateBtn.addEventListener("click", function () {
+    if (!("geolocation" in navigator)) {
+      setLocateStatus("Geolocation isn’t supported in this browser — enter conditions manually.", true);
+      return;
+    }
+    el.locateBtn.disabled = true;
+    setLocateStatus("Locating…", false);
+    navigator.geolocation.getCurrentPosition(
+      function (pos) { fetchWeather(pos.coords.latitude, pos.coords.longitude); },
+      function (err) {
+        var msg = "Location unavailable — enter conditions manually.";
+        if (err && err.code === 1) msg = "Location permission denied — enter conditions manually.";
+        setLocateStatus(msg, true);
+        el.locateBtn.disabled = false;
+      },
+      { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 }
+    );
   });
 
   // ---- Presets (localStorage) ----
