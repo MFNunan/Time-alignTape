@@ -1,4 +1,4 @@
-const CACHE = "delayline-v1";
+const CACHE = "delayline-v2";
 const ASSETS = [
   "./",
   "./index.html",
@@ -25,14 +25,17 @@ self.addEventListener("activate", (event) => {
 
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
+  // Network-first: always prefer a fresh response so edits show up on the
+  // next reload. Cache is only a fallback for offline use, never the
+  // primary source, so this app can never get silently stuck on a stale
+  // build the way a cache-first strategy would.
   event.respondWith(
-    caches.match(event.request).then((cached) => {
-      if (cached) return cached;
-      return fetch(event.request).then((response) => {
+    fetch(event.request)
+      .then((response) => {
         const copy = response.clone();
         caches.open(CACHE).then((cache) => cache.put(event.request, copy));
         return response;
-      }).catch(() => cached);
-    })
+      })
+      .catch(() => caches.match(event.request))
   );
 });
