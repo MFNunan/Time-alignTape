@@ -1,7 +1,7 @@
 {
-  "name": "Delay Line — Propagation Delay Calculator",
-  "short_name": "Delay Line",
-  "description": "Speed-of-sound delay calculator for live sound, corrected for temperature, humidity, and altitude.",
+  "name": "Propagation Calculator — Broadcast Audio Time Alignment",
+  "short_name": "Prop Calc",
+  "description": "Speed-of-sound delay calculator for broadcast audio time alignment, corrected for temperature, humidity, and altitude.",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",

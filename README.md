@@ -1,4 +1,4 @@
-# Time-alignTape — Delay Line
+# Time-alignTape — Propagation Calculator
 
 A small offline-first PWA that converts a linear throw distance (Imperial or
 Metric) into a propagation delay in milliseconds, corrected for local
