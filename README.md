@@ -27,6 +27,17 @@ Arrival time is throw distance ÷ corrected speed of sound.
 Sources: D. Bohn, "Environmental Effects on the Speed of Sound," *J. Audio
 Eng. Soc*, 1988 · ICAO Standard Atmosphere, 1993.
 
+## Delay List
+
+For a production with multiple delay positions (delay towers, IMAG
+screens, broadcast feeds), name a distance and click **+ Add** to save
+it to the Delay List below. Every row shows Label / Distance / Delay
+and recalculates live whenever temperature, humidity, or altitude
+changes — no re-entry or manual recalculation needed when conditions
+shift through a show. The list persists locally (localStorage) and is
+independent of Saved Sites, which stores full environmental presets
+rather than individual distances.
+
 ## Live conditions ("Use my location")
 
 The app can auto-fill temperature, humidity, altitude, and pressure from

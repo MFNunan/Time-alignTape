@@ -178,7 +178,7 @@
   }
   label .hint { font-weight: 400; color: var(--muted); font-size: 11.5px; }
 
-  input[type="number"], select {
+  input[type="number"], input[type="text"], select {
     font-family: var(--font-mono);
     font-variant-numeric: tabular-nums;
     font-size: 16px;
@@ -189,6 +189,7 @@
     padding: 10px 11px;
     width: 100%;
   }
+  input[type="text"] { font-family: var(--font-body); font-size: 14px; }
   input[type="number"]:focus, select:focus, button:focus-visible, input[type="text"]:focus {
     outline: 2px solid var(--accent2);
     outline-offset: 1px;
@@ -372,6 +373,110 @@
   }
   .rot-note strong { color: var(--accent); font-weight: 500; }
 
+  .add-to-list-row { margin-top: 2px; }
+  .add-to-list-row input[type="text"] { flex: 1 1 auto; min-width: 0; }
+  button.add-btn {
+    font-family: var(--font-body);
+    font-size: 13px;
+    font-weight: 600;
+    background: transparent;
+    color: var(--accent2);
+    border: 1px solid var(--accent2);
+    border-radius: 9px;
+    padding: 0 16px;
+    cursor: pointer;
+    flex: 0 0 auto;
+  }
+  button.add-btn:hover { background: color-mix(in srgb, var(--accent2) 12%, transparent); }
+
+  /* Delay list */
+  .delay-list { margin-top: 16px; }
+  .delay-list-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+  }
+  .delay-list-head h2 {
+    font-family: var(--font-display);
+    font-size: 13px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-weight: 600;
+    color: var(--muted);
+    margin: 0;
+  }
+  .delay-list-head .count {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .delay-table {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+  }
+  .delay-row {
+    display: grid;
+    grid-template-columns: 1fr auto auto auto;
+    gap: 14px;
+    align-items: center;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .delay-row:last-child { border-bottom: none; }
+  .delay-row.head-row {
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    padding-top: 10px;
+    padding-bottom: 10px;
+    background: var(--surface-2);
+  }
+  .delay-row .col-label {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text);
+    overflow-wrap: anywhere;
+  }
+  .delay-row .col-distance, .delay-row .col-ms {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    font-size: 14px;
+    color: var(--text);
+    text-align: right;
+    white-space: nowrap;
+  }
+  .delay-row .col-ms { color: var(--accent2); font-weight: 600; font-size: 15px; }
+  .delay-row .col-del button {
+    font-family: var(--font-mono);
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    border-radius: 999px;
+    width: 22px;
+    height: 22px;
+    line-height: 1;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+  }
+  .delay-row .col-del button:hover { color: var(--danger); border-color: var(--danger); }
+  .delay-empty {
+    padding: 16px;
+    color: var(--muted);
+    font-size: 13px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+  }
+
   /* Presets */
   .presets { margin-top: 16px; }
   .presets-head {
@@ -524,6 +629,10 @@
               <option value="cm">cm</option>
             </select>
           </div>
+          <div class="field-row add-to-list-row">
+            <input type="text" id="delay-label" placeholder="Label this position (e.g. Delay 1 — Tower A)" maxlength="60">
+            <button type="button" class="add-btn" id="add-to-list">+ Add</button>
+          </div>
         </div>
 
         <div class="field">
@@ -610,6 +719,16 @@
     </section>
   </main>
 
+  <section class="delay-list">
+    <div class="delay-list-head">
+      <h2>Delay List</h2>
+      <span class="count" id="delay-count"></span>
+    </div>
+    <div id="delay-table-wrap">
+      <div class="delay-empty" id="delay-empty">No positions added yet &mdash; name a distance above and hit + Add. Every row recalculates live as conditions change.</div>
+    </div>
+  </section>
+
   <section class="presets">
     <div class="presets-head">
       <h2>Saved Sites</h2>
@@ -640,6 +759,7 @@
 
   var LENGTH_TO_M = { ft: 0.3048, in: 0.0254, yd: 0.9144, m: 1, cm: 0.01 };
   var STORAGE_KEY = "delayline.presets.v1";
+  var DELAY_LIST_KEY = "delayline.delaylist.v1";
 
   var el = {
     distance: document.getElementById("distance"),
@@ -669,7 +789,12 @@
     placeBox: document.getElementById("place-box"),
     placeName: document.getElementById("place-name"),
     savePresetBtn: document.getElementById("save-preset"),
-    presetList: document.getElementById("preset-list")
+    presetList: document.getElementById("preset-list"),
+    delayLabel: document.getElementById("delay-label"),
+    addToListBtn: document.getElementById("add-to-list"),
+    delayTableWrap: document.getElementById("delay-table-wrap"),
+    delayEmpty: document.getElementById("delay-empty"),
+    delayCount: document.getElementById("delay-count")
   };
 
   function toMeters(value, unit) { return value * LENGTH_TO_M[unit]; }
@@ -742,6 +867,8 @@
 
     var freqHint = Math.max(0, Math.min(5, (c - 320) / 16));
     el.tracePoly.setAttribute("points", buildTracePoints(freqHint));
+
+    renderDelayList(c);
   }
 
   function convertFieldValue(input, fromUnit, toUnit, kind) {
@@ -913,6 +1040,104 @@
       },
       { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 }
     );
+  });
+
+  // ---- Delay list (localStorage) — named distances, recalculated live ----
+  function loadDelayList() {
+    try {
+      var raw = localStorage.getItem(DELAY_LIST_KEY);
+      return raw ? JSON.parse(raw) : [];
+    } catch (e) { return []; }
+  }
+  function saveDelayList(list) {
+    try { localStorage.setItem(DELAY_LIST_KEY, JSON.stringify(list)); } catch (e) {}
+  }
+  function renderDelayList(c) {
+    var list = loadDelayList();
+    el.delayCount.textContent = list.length ? (list.length + (list.length === 1 ? " position" : " positions")) : "";
+
+    if (!list.length) {
+      el.delayTableWrap.innerHTML = "";
+      el.delayTableWrap.appendChild(el.delayEmpty);
+      return;
+    }
+
+    var unit = el.distanceUnit.value;
+    var table = document.createElement("div");
+    table.className = "delay-table";
+
+    var head = document.createElement("div");
+    head.className = "delay-row head-row";
+    head.innerHTML = '<div class="col-label">Label</div><div class="col-distance">Distance</div><div class="col-ms">Delay</div><div class="col-del"></div>';
+    table.appendChild(head);
+
+    list.forEach(function (item, idx) {
+      var distDisplay = item.meters / LENGTH_TO_M[unit];
+      var ms = c > 0 ? (item.meters / c) * 1000 : 0;
+
+      var row = document.createElement("div");
+      row.className = "delay-row";
+
+      var labelCell = document.createElement("div");
+      labelCell.className = "col-label";
+      labelCell.textContent = item.label;
+
+      var distCell = document.createElement("div");
+      distCell.className = "col-distance";
+      distCell.textContent = fmt(distDisplay, 1) + " " + unit;
+
+      var msCell = document.createElement("div");
+      msCell.className = "col-ms";
+      msCell.textContent = fmt(ms, ms < 10 ? 2 : 1) + " ms";
+
+      var delCell = document.createElement("div");
+      delCell.className = "col-del";
+      var delBtn = document.createElement("button");
+      delBtn.type = "button";
+      delBtn.setAttribute("aria-label", "Remove " + item.label);
+      delBtn.textContent = "×";
+      delBtn.addEventListener("click", function () {
+        var current = loadDelayList();
+        current.splice(idx, 1);
+        saveDelayList(current);
+        compute();
+      });
+      delCell.appendChild(delBtn);
+
+      row.appendChild(labelCell);
+      row.appendChild(distCell);
+      row.appendChild(msCell);
+      row.appendChild(delCell);
+      table.appendChild(row);
+    });
+
+    el.delayTableWrap.innerHTML = "";
+    el.delayTableWrap.appendChild(table);
+  }
+
+  el.addToListBtn.addEventListener("click", function () {
+    var distVal = parseFloat(el.distance.value);
+    if (isNaN(distVal) || distVal <= 0) {
+      el.distance.focus();
+      return;
+    }
+    var list = loadDelayList();
+    var label = el.delayLabel.value.trim().slice(0, 60);
+    if (!label) label = "Position " + (list.length + 1);
+    list.push({
+      label: label,
+      meters: toMeters(distVal, el.distanceUnit.value)
+    });
+    saveDelayList(list);
+    el.delayLabel.value = "";
+    compute();
+  });
+
+  el.delayLabel.addEventListener("keydown", function (e) {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      el.addToListBtn.click();
+    }
   });
 
   // ---- Presets (localStorage) ----
