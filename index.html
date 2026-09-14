@@ -1,0 +1,836 @@
+<meta charset="utf-8">
+<title>Delay Line</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#1A1714">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="icon" href="icons/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Delay Line">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #F5F3EF;
+    --surface: #FFFFFF;
+    --surface-2: #FBF9F5;
+    --text: #1B1B18;
+    --muted: #706A5B;
+    --border: #E3DFD6;
+    --accent: #B5650C;
+    --accent-ink: #FFFFFF;
+    --accent2: #0E7C7B;
+    --display-bg: #1A1714;
+    --display-text: #F2EDE3;
+    --display-muted: #A69C87;
+    --display-border: #3A342A;
+    --danger: #B4432E;
+    --shadow: 0 1px 2px rgba(27,27,24,0.04), 0 8px 24px -12px rgba(27,27,24,0.18);
+    --radius: 14px;
+    --font-display: "Oswald", "Arial Narrow", sans-serif;
+    --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", monospace;
+    --font-body: "IBM Plex Sans", system-ui, sans-serif;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #17140F;
+      --surface: #24201A;
+      --surface-2: #1D1A15;
+      --text: #F2EDE3;
+      --muted: #A69C87;
+      --border: #3A342A;
+      --accent: #E8A33D;
+      --accent-ink: #1A1409;
+      --accent2: #4FD1C5;
+      --display-bg: #0F0D0A;
+      --display-text: #F2EDE3;
+      --display-muted: #8C826E;
+      --display-border: #332C21;
+      --danger: #E8886E;
+      --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 12px 28px -14px rgba(0,0,0,0.6);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #17140F;
+    --surface: #24201A;
+    --surface-2: #1D1A15;
+    --text: #F2EDE3;
+    --muted: #A69C87;
+    --border: #3A342A;
+    --accent: #E8A33D;
+    --accent-ink: #1A1409;
+    --accent2: #4FD1C5;
+    --display-bg: #0F0D0A;
+    --display-text: #F2EDE3;
+    --display-muted: #8C826E;
+    --display-border: #332C21;
+    --danger: #E8886E;
+    --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 12px 28px -14px rgba(0,0,0,0.6);
+  }
+
+  * { box-sizing: border-box; }
+  html { color-scheme: light dark; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-body);
+    font-size: 15px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  .app {
+    max-width: 920px;
+    margin: 0 auto;
+    padding: 28px 18px 64px;
+  }
+
+  header.top { margin-bottom: 22px; }
+  .eyebrow {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent2);
+    font-weight: 500;
+  }
+  h1 {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: clamp(32px, 6vw, 44px);
+    letter-spacing: 0.01em;
+    margin: 4px 0 6px;
+    text-wrap: balance;
+  }
+  .sub {
+    color: var(--muted);
+    font-size: 14.5px;
+    max-width: 54ch;
+  }
+
+  .unit-toggle {
+    display: inline-flex;
+    margin-top: 18px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 3px;
+    gap: 2px;
+  }
+  .unit-toggle button {
+    font-family: var(--font-mono);
+    font-size: 12.5px;
+    letter-spacing: 0.04em;
+    padding: 7px 16px;
+    border-radius: 999px;
+    border: none;
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+  }
+  .unit-toggle button.active {
+    background: var(--accent);
+    color: var(--accent-ink);
+    font-weight: 600;
+  }
+
+  main.grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 16px;
+    margin-top: 20px;
+  }
+  @media (min-width: 760px) {
+    main.grid { grid-template-columns: 1fr 1fr; align-items: start; }
+  }
+
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 20px;
+  }
+  .panel h2 {
+    font-family: var(--font-display);
+    font-size: 13px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-weight: 600;
+    color: var(--muted);
+    margin: 0 0 16px;
+  }
+
+  .strip { display: flex; flex-direction: column; gap: 16px; }
+  .field { display: flex; flex-direction: column; gap: 6px; }
+  .field-row { display: flex; gap: 8px; align-items: stretch; }
+  label {
+    font-size: 12.5px;
+    font-weight: 500;
+    color: var(--muted);
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 8px;
+  }
+  label .hint { font-weight: 400; color: var(--muted); font-size: 11.5px; }
+
+  input[type="number"], select {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    font-size: 16px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    color: var(--text);
+    padding: 10px 11px;
+    width: 100%;
+  }
+  input[type="number"]:focus, select:focus, button:focus-visible, input[type="text"]:focus {
+    outline: 2px solid var(--accent2);
+    outline-offset: 1px;
+  }
+  input[type="number"] { flex: 1 1 auto; min-width: 0; }
+  select.unit-select { flex: 0 0 auto; width: auto; min-width: 68px; }
+
+  input[type="range"] {
+    width: 100%;
+    accent-color: var(--accent);
+    height: 20px;
+  }
+  .humidity-row { display: flex; align-items: center; gap: 12px; }
+  .humidity-val {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    font-size: 15px;
+    min-width: 3.6ch;
+    text-align: right;
+  }
+
+  .pressure-note {
+    font-size: 12px;
+    color: var(--muted);
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    padding: 8px 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .pressure-note strong {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    color: var(--text);
+    font-weight: 500;
+    font-size: 13px;
+  }
+  .override-toggle {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 12.5px;
+    color: var(--muted);
+    cursor: pointer;
+    user-select: none;
+    margin-top: 2px;
+  }
+  .override-toggle input { accent-color: var(--accent2); }
+  .pressure-override { display: none; margin-top: 8px; }
+  .pressure-override.show { display: block; }
+
+  /* Display panel */
+  .display {
+    background: var(--display-bg);
+    border: 1px solid var(--display-border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 22px 20px 18px;
+    color: var(--display-text);
+    position: relative;
+    overflow: hidden;
+  }
+  .display .eyebrow2 {
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--display-muted);
+  }
+  .display .ms-value {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+    font-size: clamp(48px, 10vw, 64px);
+    line-height: 1;
+    margin: 6px 0 2px;
+    color: var(--display-text);
+    letter-spacing: -0.01em;
+  }
+  .display .ms-unit {
+    font-size: 0.34em;
+    font-weight: 500;
+    color: var(--accent2);
+    margin-left: 6px;
+    letter-spacing: 0.02em;
+  }
+  .trace-wrap {
+    height: 46px;
+    margin: 12px 0 14px;
+    border-top: 1px solid var(--display-border);
+    border-bottom: 1px solid var(--display-border);
+    position: relative;
+    overflow: hidden;
+  }
+  .trace-wrap svg { display: block; width: 200%; height: 100%; }
+  .trace-line {
+    animation: scrollTrace 6s linear infinite;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .trace-line { animation: none; }
+  }
+  @keyframes scrollTrace {
+    from { transform: translateX(0); }
+    to { transform: translateX(-50%); }
+  }
+  .metrics {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px 16px;
+    margin-top: 4px;
+  }
+  .metric { display: flex; flex-direction: column; gap: 2px; }
+  .metric .k {
+    font-size: 10.5px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--display-muted);
+  }
+  .metric .v {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    font-size: 15px;
+    color: var(--display-text);
+  }
+  .rot-note {
+    margin-top: 16px;
+    padding-top: 12px;
+    border-top: 1px solid var(--display-border);
+    font-size: 12px;
+    color: var(--display-muted);
+    line-height: 1.5;
+  }
+  .rot-note strong { color: var(--accent); font-weight: 500; }
+
+  /* Presets */
+  .presets { margin-top: 16px; }
+  .presets-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+  }
+  .presets h2 {
+    font-family: var(--font-display);
+    font-size: 13px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-weight: 600;
+    color: var(--muted);
+    margin: 0;
+  }
+  button.save-btn {
+    font-family: var(--font-body);
+    font-size: 13px;
+    font-weight: 600;
+    background: var(--accent);
+    color: var(--accent-ink);
+    border: none;
+    border-radius: 8px;
+    padding: 8px 14px;
+    cursor: pointer;
+  }
+  button.save-btn:hover { filter: brightness(1.06); }
+  .chip-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 6px 6px 6px 14px;
+    font-size: 13px;
+  }
+  .chip button {
+    font-family: var(--font-mono);
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    border-radius: 999px;
+    width: 22px;
+    height: 22px;
+    line-height: 1;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+  }
+  .chip button:hover { color: var(--danger); border-color: var(--danger); }
+  .chip .load-btn {
+    background: transparent;
+    border: none;
+    color: var(--text);
+    font-family: var(--font-body);
+    font-weight: 500;
+    cursor: pointer;
+    padding: 0;
+  }
+  .empty-note { color: var(--muted); font-size: 13px; }
+
+  details.about {
+    margin-top: 22px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 4px 20px;
+  }
+  details.about summary {
+    cursor: pointer;
+    font-family: var(--font-display);
+    font-size: 13px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    font-weight: 600;
+    color: var(--muted);
+    padding: 14px 0;
+  }
+  .about-body {
+    padding-bottom: 18px;
+    font-size: 13.5px;
+    color: var(--muted);
+    line-height: 1.6;
+  }
+  .about-body p { margin: 0 0 10px; }
+  .about-body code {
+    font-family: var(--font-mono);
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 1px 5px;
+    color: var(--text);
+    font-size: 12.5px;
+  }
+  .about-body .src { font-size: 12px; color: var(--muted); margin-top: 12px; }
+
+  footer.foot {
+    text-align: center;
+    color: var(--muted);
+    font-size: 11.5px;
+    margin-top: 28px;
+    font-family: var(--font-mono);
+  }
+</style>
+
+<div class="app">
+  <header class="top">
+    <div class="eyebrow">FOH &middot; DELAY TOWER ALIGNMENT</div>
+    <h1>Delay Line</h1>
+    <p class="sub">Throw distance to arrival time, corrected for the air it travels through &mdash; temperature and humidity drive the math; altitude logs your local pressure.</p>
+    <div class="unit-toggle" role="group" aria-label="Unit system">
+      <button type="button" id="btn-imperial" class="active">IMPERIAL</button>
+      <button type="button" id="btn-metric">METRIC</button>
+    </div>
+  </header>
+
+  <main class="grid">
+    <section class="panel">
+      <h2>Throw &amp; Conditions</h2>
+      <div class="strip">
+        <div class="field">
+          <label for="distance">Throw distance <span class="hint">speaker to listener</span></label>
+          <div class="field-row">
+            <input type="number" id="distance" value="120" step="any" inputmode="decimal">
+            <select id="distance-unit" class="unit-select">
+              <option value="ft">ft</option>
+              <option value="in">in</option>
+              <option value="yd">yd</option>
+              <option value="m">m</option>
+              <option value="cm">cm</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="temp">Air temperature</label>
+          <div class="field-row">
+            <input type="number" id="temp" value="70" step="any" inputmode="decimal">
+            <select id="temp-unit" class="unit-select">
+              <option value="F">&deg;F</option>
+              <option value="C">&deg;C</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="humidity">Relative humidity <span class="hint" id="humidity-hint">secondary correction</span></label>
+          <div class="humidity-row">
+            <input type="range" id="humidity" min="0" max="100" value="50">
+            <span class="humidity-val" id="humidity-val">50%</span>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="altitude">Site altitude</label>
+          <div class="field-row">
+            <input type="number" id="altitude" value="0" step="any" inputmode="decimal">
+            <select id="altitude-unit" class="unit-select">
+              <option value="ft">ft</option>
+              <option value="m">m</option>
+            </select>
+          </div>
+          <div class="pressure-note">
+            <span>Est. barometric pressure &mdash; ISA model</span>
+            <strong id="pressure-estimate">1013.3 hPa</strong>
+          </div>
+          <label class="override-toggle">
+            <input type="checkbox" id="pressure-override-check">
+            Override with a local station reading
+          </label>
+          <div class="pressure-override" id="pressure-override-block">
+            <div class="field-row">
+              <input type="number" id="pressure-val" value="1013.3" step="any" inputmode="decimal">
+              <select id="pressure-unit" class="unit-select">
+                <option value="hPa">hPa</option>
+                <option value="inHg">inHg</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="display">
+      <div class="eyebrow2">ARRIVAL TIME</div>
+      <div class="ms-value"><span id="ms-out">104.9</span><span class="ms-unit">ms</span></div>
+
+      <div class="trace-wrap" aria-hidden="true">
+        <svg viewBox="0 0 400 46" preserveAspectRatio="none">
+          <polyline class="trace-line" id="trace-poly" fill="none" stroke="var(--accent2)" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round" points=""></polyline>
+        </svg>
+      </div>
+
+      <div class="metrics">
+        <div class="metric">
+          <div class="k">Speed of sound</div>
+          <div class="v" id="c-ms">344.6 m/s</div>
+        </div>
+        <div class="metric">
+          <div class="k">&nbsp;</div>
+          <div class="v" id="c-fts">1130.8 ft/s</div>
+        </div>
+        <div class="metric">
+          <div class="k">Feet per ms</div>
+          <div class="v" id="ft-per-ms">1.131 ft</div>
+        </div>
+        <div class="metric">
+          <div class="k">Ms per foot</div>
+          <div class="v" id="ms-per-ft">0.884 ms</div>
+        </div>
+      </div>
+
+      <div class="rot-note" id="rot-note">
+        Rule-of-thumb (1 ms &asymp; 1.13 ft, 70&deg;F/50% RH) is <strong id="rot-delta">spot on</strong> for these conditions.
+      </div>
+    </section>
+  </main>
+
+  <section class="presets">
+    <div class="presets-head">
+      <h2>Saved Sites</h2>
+      <button type="button" class="save-btn" id="save-preset">+ Save this site</button>
+    </div>
+    <div class="chip-row" id="preset-list">
+      <span class="empty-note">No sites saved yet &mdash; conditions save locally to this device.</span>
+    </div>
+  </section>
+
+  <details class="about">
+    <summary>About the math</summary>
+    <div class="about-body">
+      <p>Speed of sound uses the Bohn (1988) formula standard in AES live-sound literature:
+      <code>c = 331.3 + 0.606&times;T + 0.0124&times;RH</code> (T in &deg;C, RH in %). Temperature dominates; humidity adds up to a few tenths of a m/s at typical stage conditions.</p>
+      <p>Barometric pressure has a negligible direct effect on the speed of sound in air &mdash; it cancels out in the ideal-gas relationship, a well-documented result in acoustic physics. Altitude here estimates your local station pressure via the International Standard Atmosphere model (<code>P = P&#8320;(1 &minus; 0.0065h/288.15)^5.2559</code>) purely so you can log real site conditions alongside a preset; it does not feed the timing math. Enter a live station reading to log the true value instead of the ISA estimate.</p>
+      <p>Arrival time is simply throw distance &divide; corrected speed of sound.</p>
+      <p class="src">Sources: D. Bohn, &ldquo;Environmental Effects on the Speed of Sound,&rdquo; J. Audio Eng. Soc, 1988 &middot; ICAO Standard Atmosphere, 1993.</p>
+    </div>
+  </details>
+
+  <footer class="foot">WORKS OFFLINE &middot; NOTHING LEAVES THIS DEVICE</footer>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var LENGTH_TO_M = { ft: 0.3048, in: 0.0254, yd: 0.9144, m: 1, cm: 0.01 };
+  var STORAGE_KEY = "delayline.presets.v1";
+
+  var el = {
+    distance: document.getElementById("distance"),
+    distanceUnit: document.getElementById("distance-unit"),
+    temp: document.getElementById("temp"),
+    tempUnit: document.getElementById("temp-unit"),
+    humidity: document.getElementById("humidity"),
+    humidityVal: document.getElementById("humidity-val"),
+    altitude: document.getElementById("altitude"),
+    altitudeUnit: document.getElementById("altitude-unit"),
+    pressureEstimate: document.getElementById("pressure-estimate"),
+    pressureOverrideCheck: document.getElementById("pressure-override-check"),
+    pressureOverrideBlock: document.getElementById("pressure-override-block"),
+    pressureVal: document.getElementById("pressure-val"),
+    pressureUnit: document.getElementById("pressure-unit"),
+    msOut: document.getElementById("ms-out"),
+    cMs: document.getElementById("c-ms"),
+    cFts: document.getElementById("c-fts"),
+    ftPerMs: document.getElementById("ft-per-ms"),
+    msPerFt: document.getElementById("ms-per-ft"),
+    rotDelta: document.getElementById("rot-delta"),
+    tracePoly: document.getElementById("trace-poly"),
+    btnImperial: document.getElementById("btn-imperial"),
+    btnMetric: document.getElementById("btn-metric"),
+    savePresetBtn: document.getElementById("save-preset"),
+    presetList: document.getElementById("preset-list")
+  };
+
+  function toMeters(value, unit) { return value * LENGTH_TO_M[unit]; }
+  function toCelsius(value, unit) { return unit === "F" ? (value - 32) * 5 / 9 : value; }
+  function toHpa(value, unit) { return unit === "inHg" ? value * 33.8639 : value; }
+
+  function isaPressureHpa(altitudeMeters) {
+    var P0 = 1013.25, T0 = 288.15, L = 0.0065, g = 9.80665, R = 287.05;
+    var exp = g / (L * R);
+    var base = 1 - (L * altitudeMeters) / T0;
+    if (base < 0) base = 0;
+    return P0 * Math.pow(base, exp);
+  }
+
+  function speedOfSoundMs(tempC, rhPercent) {
+    return 331.3 + 0.606 * tempC + 0.0124 * rhPercent;
+  }
+
+  function fmt(n, digits) {
+    if (!isFinite(n)) return "–";
+    return n.toFixed(digits);
+  }
+
+  function buildTracePoints(freqHint) {
+    var pts = [];
+    var w = 400, h = 46, mid = h / 2, amp = h * 0.32;
+    var cycles = 3 + freqHint;
+    for (var i = 0; i <= 160; i++) {
+      var t = i / 160;
+      var x = t * (w * 2);
+      var y = mid + amp * Math.sin(t * cycles * Math.PI * 2);
+      pts.push(x.toFixed(1) + "," + y.toFixed(1));
+    }
+    return pts.join(" ");
+  }
+
+  function compute() {
+    var distM = toMeters(parseFloat(el.distance.value) || 0, el.distanceUnit.value);
+    var tempC = toCelsius(parseFloat(el.temp.value) || 0, el.tempUnit.value);
+    var rh = parseFloat(el.humidity.value) || 0;
+    var altM = toMeters(parseFloat(el.altitude.value) || 0, el.altitudeUnit.value === "m" ? "m" : "ft");
+
+    var estHpa = isaPressureHpa(altM);
+    el.pressureEstimate.textContent = fmt(estHpa, 1) + " hPa • " + fmt(estHpa / 33.8639, 2) + " inHg";
+
+    if (!el.pressureOverrideCheck.checked) {
+      el.pressureVal.value = fmt(estHpa, 1);
+      el.pressureUnit.value = "hPa";
+    }
+
+    var c = speedOfSoundMs(tempC, rh);
+    var ms = c > 0 ? (distM / c) * 1000 : 0;
+
+    el.msOut.textContent = fmt(ms, ms < 10 ? 2 : 1);
+    el.cMs.textContent = fmt(c, 1) + " m/s";
+    el.cFts.textContent = fmt(c * 3.28084, 1) + " ft/s";
+    var ftPerMs = (c * 3.28084) / 1000;
+    el.ftPerMs.textContent = fmt(ftPerMs, 3) + " ft";
+    el.msPerFt.textContent = fmt(1 / ftPerMs, 3) + " ms";
+
+    var cRef = speedOfSoundMs(21.1, 50);
+    var deltaPct = ((c - cRef) / cRef) * 100;
+    var deltaTxt;
+    if (Math.abs(deltaPct) < 0.15) {
+      deltaTxt = "spot on";
+    } else {
+      deltaTxt = (deltaPct > 0 ? "" + fmt(deltaPct, 1) + "% faster" : "" + fmt(Math.abs(deltaPct), 1) + "% slower") + " than the rule of thumb";
+    }
+    el.rotDelta.textContent = deltaTxt;
+
+    var freqHint = Math.max(0, Math.min(5, (c - 320) / 16));
+    el.tracePoly.setAttribute("points", buildTracePoints(freqHint));
+  }
+
+  function convertFieldValue(input, fromUnit, toUnit, kind) {
+    var v = parseFloat(input.value);
+    if (isNaN(v) || fromUnit === toUnit) return;
+    var out;
+    if (kind === "length") {
+      out = toMeters(v, fromUnit) / LENGTH_TO_M[toUnit];
+    } else if (kind === "temp") {
+      var c = toCelsius(v, fromUnit);
+      out = toUnit === "F" ? c * 9 / 5 + 32 : c;
+    } else if (kind === "pressure") {
+      var hpa = toHpa(v, fromUnit);
+      out = toUnit === "inHg" ? hpa / 33.8639 : hpa;
+    }
+    input.value = fmt(out, kind === "pressure" ? 1 : 2);
+  }
+
+  function setUnitSystem(system) {
+    var distTo = system === "imperial" ? "ft" : "m";
+    var tempTo = system === "imperial" ? "F" : "C";
+    var altTo = system === "imperial" ? "ft" : "m";
+    var presTo = system === "imperial" ? "inHg" : "hPa";
+
+    convertFieldValue(el.distance, el.distanceUnit.value, distTo, "length");
+    convertFieldValue(el.temp, el.tempUnit.value, tempTo, "temp");
+    convertFieldValue(el.altitude, el.altitudeUnit.value, altTo, "length");
+    convertFieldValue(el.pressureVal, el.pressureUnit.value, presTo, "pressure");
+
+    el.distanceUnit.value = distTo;
+    el.tempUnit.value = tempTo;
+    el.altitudeUnit.value = altTo;
+    el.pressureUnit.value = presTo;
+
+    if (system === "imperial") {
+      el.btnImperial.classList.add("active");
+      el.btnMetric.classList.remove("active");
+    } else {
+      el.btnMetric.classList.add("active");
+      el.btnImperial.classList.remove("active");
+    }
+    compute();
+  }
+
+  el.btnImperial.addEventListener("click", function () { setUnitSystem("imperial"); });
+  el.btnMetric.addEventListener("click", function () { setUnitSystem("metric"); });
+
+  el.humidity.addEventListener("input", function () {
+    el.humidityVal.textContent = el.humidity.value + "%";
+    compute();
+  });
+
+  el.pressureOverrideCheck.addEventListener("change", function () {
+    el.pressureOverrideBlock.classList.toggle("show", el.pressureOverrideCheck.checked);
+    compute();
+  });
+
+  [el.distance, el.distanceUnit, el.temp, el.tempUnit, el.altitude, el.altitudeUnit,
+   el.pressureVal, el.pressureUnit].forEach(function (node) {
+    node.addEventListener("input", compute);
+    node.addEventListener("change", compute);
+  });
+
+  // ---- Presets (localStorage) ----
+  function loadPresets() {
+    try {
+      var raw = localStorage.getItem(STORAGE_KEY);
+      return raw ? JSON.parse(raw) : [];
+    } catch (e) { return []; }
+  }
+  function savePresets(list) {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(list)); } catch (e) {}
+  }
+  function renderPresets() {
+    var list = loadPresets();
+    el.presetList.innerHTML = "";
+    if (!list.length) {
+      var note = document.createElement("span");
+      note.className = "empty-note";
+      note.textContent = "No sites saved yet — conditions save locally to this device.";
+      el.presetList.appendChild(note);
+      return;
+    }
+    list.forEach(function (p, idx) {
+      var chip = document.createElement("span");
+      chip.className = "chip";
+      var loadBtn = document.createElement("button");
+      loadBtn.className = "load-btn";
+      loadBtn.type = "button";
+      loadBtn.textContent = p.name;
+      loadBtn.addEventListener("click", function () { applyPreset(p); });
+      var delBtn = document.createElement("button");
+      delBtn.type = "button";
+      delBtn.setAttribute("aria-label", "Delete " + p.name);
+      delBtn.textContent = "×";
+      delBtn.addEventListener("click", function () {
+        var updated = loadPresets();
+        updated.splice(idx, 1);
+        savePresets(updated);
+        renderPresets();
+      });
+      chip.appendChild(loadBtn);
+      chip.appendChild(delBtn);
+      el.presetList.appendChild(chip);
+    });
+  }
+  function applyPreset(p) {
+    el.distance.value = p.distance;
+    el.distanceUnit.value = p.distanceUnit;
+    el.temp.value = p.temp;
+    el.tempUnit.value = p.tempUnit;
+    el.humidity.value = p.humidity;
+    el.humidityVal.textContent = p.humidity + "%";
+    el.altitude.value = p.altitude;
+    el.altitudeUnit.value = p.altitudeUnit;
+    el.pressureOverrideCheck.checked = !!p.pressureOverride;
+    el.pressureOverrideBlock.classList.toggle("show", !!p.pressureOverride);
+    if (p.pressureOverride) {
+      el.pressureVal.value = p.pressureVal;
+      el.pressureUnit.value = p.pressureUnit;
+    }
+    compute();
+  }
+  el.savePresetBtn.addEventListener("click", function () {
+    var name = window.prompt("Name this site (e.g. “Riverside Amphitheater — FOH”):");
+    if (!name) return;
+    var list = loadPresets();
+    list.push({
+      name: name.trim().slice(0, 60),
+      distance: el.distance.value,
+      distanceUnit: el.distanceUnit.value,
+      temp: el.temp.value,
+      tempUnit: el.tempUnit.value,
+      humidity: el.humidity.value,
+      altitude: el.altitude.value,
+      altitudeUnit: el.altitudeUnit.value,
+      pressureOverride: el.pressureOverrideCheck.checked,
+      pressureVal: el.pressureVal.value,
+      pressureUnit: el.pressureUnit.value
+    });
+    savePresets(list);
+    renderPresets();
+  });
+
+  renderPresets();
+  compute();
+
+  if ("serviceWorker" in navigator && window.top === window.self) {
+    window.addEventListener("load", function () {
+      navigator.serviceWorker.register("sw.js").catch(function () {});
+    });
+  }
+})();
+</script>
